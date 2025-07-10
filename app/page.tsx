@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Upload, FileText, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabaseClient'
 
 interface AnalysisResult {
   title: string
@@ -17,6 +18,11 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Supabase user state
+  const [users, setUsers] = useState([])
+  const [name, setName] = useState('')
+  const [userLoading, setUserLoading] = useState(true)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -73,6 +79,32 @@ export default function Home() {
     e.preventDefault()
   }
 
+  // Supabase functions
+  const fetchUsers = async () => {
+    const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
+    if (error) console.error('Fetch users error:', error)
+    else setUsers(data || [])
+    setUserLoading(false)
+  }
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+
+    const { error } = await supabase.from('users').insert([{ name }])
+    if (error) {
+      console.error('Insert user error:', error)
+      alert('Failed to insert user.')
+    } else {
+      setName('')
+      fetchUsers()
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Header */}
@@ -81,7 +113,7 @@ export default function Home() {
           Research Paper Analyzer
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Upload your research paper and get instant AI-powered analysis with key insights, 
+          Upload your research paper and get instant AI-powered analysis with key insights,
           methodology breakdown, and comprehensive summaries.
         </p>
       </div>
@@ -160,38 +192,32 @@ export default function Home() {
       {result && (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold text-gray-900">Analysis Results</h2>
-          
-          {/* Title */}
+
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Title</h3>
             <p className="text-gray-700">{result.title}</p>
           </div>
 
-          {/* Summary */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Summary</h3>
             <p className="text-gray-700 leading-relaxed">{result.summary}</p>
           </div>
 
-          {/* Problem Statement */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Problem Statement</h3>
             <p className="text-gray-700 leading-relaxed">{result.problemStatement}</p>
           </div>
 
-          {/* Methodology */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Methodology</h3>
             <p className="text-gray-700 leading-relaxed">{result.methodology}</p>
           </div>
 
-          {/* Results */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Results</h3>
             <p className="text-gray-700 leading-relaxed">{result.results}</p>
           </div>
 
-          {/* Conclusion */}
           <div className="card">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Conclusion</h3>
             <p className="text-gray-700 leading-relaxed">{result.conclusion}</p>
@@ -236,6 +262,42 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Supabase Users Section */}
+      <div className="mt-16 border-t pt-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Community Submissions</h2>
+
+        <form onSubmit={handleAddUser} className="flex gap-2 mb-6 max-w-md">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter your name"
+            className="border p-2 flex-grow rounded"
+          />
+          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
+            Submit
+          </button>
+        </form>
+
+        {userLoading ? (
+          <p>Loading users...</p>
+        ) : users.length > 0 ? (
+          <ul className="space-y-2">
+            {users.map((user: any) => (
+              <li key={user.id} className="p-2 border rounded-md">
+                <strong>{user.name}</strong> — {new Date(user.created_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">No users yet. Be the first!</p>
+        )}
+      </div>
+      <footer className="mt-16 text-center text-gray-500 text-sm">
+       Made with ❤️ by Haseeb
+      </footer>
+
     </div>
   )
-} 
+}
